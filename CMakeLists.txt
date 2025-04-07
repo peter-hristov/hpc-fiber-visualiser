@@ -15,9 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(CGAL 6.0.1 REQUIRED)
 find_package(VTK 9.4.1 REQUIRED)
 
-set(SOURCES
-    ./src/main.cpp
-    )
+set(SOURCES ./main.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
