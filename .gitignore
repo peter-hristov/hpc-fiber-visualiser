@@ -1,5 +1,3 @@
-build/*
-libraries/*
+build/
+libraries/
 
-!build/.gitkeep
-!libraries/.gitkeep
