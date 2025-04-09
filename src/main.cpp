@@ -118,7 +118,7 @@ void writePolygons(Data *data, string filename)
         }
         else
         {
-            continue;
+            //continue;
             // Create points and cell array
             auto points = vtkSmartPointer<vtkPoints>::New();
             auto polygonsCells = vtkSmartPointer<vtkCellArray>::New();
