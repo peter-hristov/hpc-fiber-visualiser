@@ -46,8 +46,20 @@ To run on a slighly bigger data set
 
 ```
 
-Big boy
+Big boy - downsample 4, expect 4-5h and 50-60gb RAM
 ```
-./fv99 -f ~/Projects/data/reeb-space-test-data/ttk/downsample-4-46800.vtu --outputSheetFibersFolder ./ttk-downsample-4 --fiberSampling 20 --sheetOutputCount 30 -e 1e-2
+./fv99 -f ./data/downsample-4-46800.vtu --outputSheetFibersFolder ./ttk-downsample-4 --fiberSampling 20 --sheetOutputCount 30 -e 1e-2
+
+```
+
+Bigger boy - downsample 3, expect 13h and 160gb RAM
+```
+./fv99 -f ./data/downsample-3-113750.vtu --outputSheetFibersFolder ./ttk-downsample-3 --fiberSampling 20 --sheetOutputCount 30 -e 1e-2
+
+```
+
+Chonker - downsample 2, expect 40h and 620gb RAM
+```
+./fv99 -f ./data/downsample-2-384800.vtu --outputSheetFibersFolder ./ttk-downsample-2 --fiberSampling 20 --sheetOutputCount 30 -e 1e-2
 
 ```
