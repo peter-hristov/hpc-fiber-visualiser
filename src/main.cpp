@@ -1,5 +1,6 @@
 #include <set>
 #include <filesystem>
+#include <string>
 #include <unordered_map>
 
 #include "./Timer.h"
@@ -10,8 +11,103 @@
 
 #include <CGAL/Union_find.h>
 
+#include <vtkSmartPointer.h>
+#include <vtkPoints.h>
+#include <vtkPolygon.h>
+#include <vtkCellArray.h>
+#include <vtkPolyData.h>
+#include <vtkFloatArray.h>
+#include <vtkIntArray.h>
+#include <vtkXMLPolyDataWriter.h>
+#include <vtkCellData.h>
+
+#include <vtkMultiBlockDataSet.h>
+#include <vtkXMLMultiBlockDataWriter.h>
+
+
+
 using namespace std;
 namespace fs = std::filesystem;
+
+
+void writePolygons(Data *data, string filename)
+{
+
+    // Create the multiblock dataset
+    auto multiBlock = vtkSmartPointer<vtkMultiBlockDataSet>::New();
+
+    int counter = 0;
+
+    for (const auto &[sheetId, polygon] : data->sheetPolygon)
+    {
+        // Create points and cell array
+        auto points = vtkSmartPointer<vtkPoints>::New();
+        auto polygonsCells = vtkSmartPointer<vtkCellArray>::New();
+
+        auto cellColors = vtkSmartPointer<vtkFloatArray>::New();
+        cellColors->SetNumberOfComponents(3);  // RGB
+        cellColors->SetName("Colors");
+
+        auto cellSheetIds = vtkSmartPointer<vtkIntArray>::New();
+        cellSheetIds->SetNumberOfComponents(1);  // RGB
+        cellSheetIds->SetName("SheetId");
+
+        const vector<float> sheetColour = data->fiberColours[data->sheetToColour[sheetId] % data->fiberColours.size()];
+
+        // Add points to the points object
+        vtkIdType startIndex = points->GetNumberOfPoints();
+        for (const CartesianPoint &point : polygon) 
+        {
+            points->InsertNextPoint(point.x(), point.y(), 0.0);
+        }
+
+        // Create the polygon and add it to the cell array
+        auto poly = vtkSmartPointer<vtkPolygon>::New();
+        poly->GetPointIds()->SetNumberOfIds(polygon.size());
+        for (vtkIdType j = 0; j < static_cast<vtkIdType>(polygon.size()); ++j)
+        {
+            poly->GetPointIds()->SetId(j, startIndex + j);
+        }
+        polygonsCells->InsertNextCell(poly);
+
+        // Add the color for this polygon
+        cellColors->InsertNextTypedTuple(sheetColour.data());
+        cellSheetIds->InsertNextValue(sheetId);
+
+
+
+
+
+        // Create the polydata
+        auto polyData = vtkSmartPointer<vtkPolyData>::New();
+        polyData->SetPoints(points);
+        polyData->SetPolys(polygonsCells);
+        polyData->GetCellData()->AddArray(cellSheetIds);  // Add the integer array
+        polyData->GetCellData()->AddArray(cellColors);
+        polyData->GetCellData()->SetScalars(cellColors);
+
+
+        // Add the polydata as a block in the multiblock dataset
+        multiBlock->SetBlock(counter++, polyData);
+
+
+        // Write to VTP file
+        //auto writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+        //writer->SetFileName(filename.c_str());
+        //writer->SetInputData(polyData);
+        //writer->Write();
+
+    }
+
+
+    // Write the multiblock dataset to a VTK file
+    auto writer = vtkSmartPointer<vtkXMLMultiBlockDataWriter>::New();
+    writer->SetFileName(filename.c_str());
+    writer->SetInputData(multiBlock);
+    writer->Write();
+
+
+}
 
 
 int main(int argc, char* argv[])
@@ -209,6 +305,9 @@ int main(int argc, char* argv[])
     {
         data->generatefFaceFibersForSheets(sheetOutputCount, fiberSampling, outputSheetFibersFolder);
     }
+
+
+    writePolygons(data, "./polygons.vtm");
 
     delete data;
 
