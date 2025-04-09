@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.18)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 
-set(PROJECT_NAME fv99Hpc)
+set(PROJECT_NAME fv99)
 project(${PROJECT_NAME})
 message(STATUS "${PROJECT_NAME}")
 
@@ -15,7 +15,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(CGAL 6.0.1 REQUIRED)
 find_package(VTK 9.4.1 REQUIRED)
 
-set(SOURCES ./main.cpp)
+set(SOURCES 
+    ./src/Data.cpp
+    ./src/ReebSpace.cpp
+    ./src/main.cpp
+    ./src/utility/utility.cpp
+    )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
