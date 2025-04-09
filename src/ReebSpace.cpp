@@ -1309,7 +1309,7 @@ void ReebSpace::computeReebSpacePostprocess(Data *data)
             
             if (sheetBoundaryNeighbours !=1)
             {
-                printf("The boundary of sheet %d is degenerate, a vertex has %d boundary neighours, should only be one.\n", sheetId);
+                printf("The boundary of sheet %d is degenerate, a vertex has %d boundary neighours, should only be one.\n", sheetId, sheetBoundaryNeighbours);
                 data->incompleteSheets.insert(sheetId);
                 break;
             }

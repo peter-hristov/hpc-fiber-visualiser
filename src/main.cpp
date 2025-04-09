@@ -40,55 +40,132 @@ void writePolygons(Data *data, string filename)
 
     for (const auto &[sheetId, polygon] : data->sheetPolygon)
     {
-        // Create points and cell array
-        auto points = vtkSmartPointer<vtkPoints>::New();
-        auto polygonsCells = vtkSmartPointer<vtkCellArray>::New();
-
-        auto cellColors = vtkSmartPointer<vtkFloatArray>::New();
-        cellColors->SetNumberOfComponents(3);  // RGB
-        cellColors->SetName("Colors");
-
-        auto cellSheetIds = vtkSmartPointer<vtkIntArray>::New();
-        cellSheetIds->SetNumberOfComponents(1);  // RGB
-        cellSheetIds->SetName("SheetId");
-
         const vector<float> sheetColour = data->fiberColours[data->sheetToColour[sheetId] % data->fiberColours.size()];
 
-        // Add points to the points object
-        vtkIdType startIndex = points->GetNumberOfPoints();
-        for (const CartesianPoint &point : polygon) 
+
+        //if (true)
+        if (data->incompleteSheets.contains(sheetId))
         {
-            points->InsertNextPoint(point.x(), point.y(), 0.0);
+            cout << "Writing sheet " << sheetId << endl;
+
+            auto points = vtkSmartPointer<vtkPoints>::New();
+            auto polygonsCells = vtkSmartPointer<vtkCellArray>::New();
+
+            auto cellColors = vtkSmartPointer<vtkFloatArray>::New();
+            cellColors->SetNumberOfComponents(3);  // RGB
+            cellColors->SetName("Colors");
+
+            auto cellSheetIds = vtkSmartPointer<vtkIntArray>::New();
+            cellSheetIds->SetNumberOfComponents(1);
+            cellSheetIds->SetName("SheetId");
+
+            // Loop through all faces to see which ones are in the sheet
+            for (auto f = data->arr.faces_begin(); f != data->arr.faces_end(); ++f) 
+            {
+                const int currentFaceID = data->arrangementFacesIdices[f];
+
+                // This adds one polygon
+                for (const auto &[triangleId, fiberComponentId] : data->fiberSeeds[currentFaceID])
+                {
+
+                    const int componentSheetId = data->reebSpace.findTriangle({currentFaceID, fiberComponentId});
+
+                    // Now we can add the polygon
+                    if (componentSheetId == sheetId)
+                    {
+                        // Get the starting index for these new points
+                        vtkIdType startIndex = points->GetNumberOfPoints();
+
+                        typename Arrangement_2::Ccb_halfedge_const_circulator circ = f->outer_ccb();
+                        typename Arrangement_2::Ccb_halfedge_const_circulator curr = circ;
+                        do {
+                            typename Arrangement_2::Halfedge_const_handle e = curr;
+
+                            // Get point from CGAL (and convert to double )
+                            const float u = CGAL::to_double(e->source()->point().x());
+                            const float v = CGAL::to_double(e->source()->point().y());
+
+                            points->InsertNextPoint(u, v, 0.0);
+                        } while (++curr != circ);
+
+
+                        // Write the face as a polygon
+                        auto poly = vtkSmartPointer<vtkPolygon>::New();
+                        poly->GetPointIds()->SetNumberOfIds(polygon.size());
+                        for (vtkIdType j = 0; j < static_cast<vtkIdType>(polygon.size()); ++j)
+                        {
+                            poly->GetPointIds()->SetId(j, startIndex + j);
+                        }
+
+                        polygonsCells->InsertNextCell(poly);
+
+                        // Assign per-cell data
+                        cellColors->InsertNextTypedTuple(sheetColour.data());
+                        cellSheetIds->InsertNextValue(sheetId);
+                    }
+                }
+            }
+
+            // Create one final polydata object
+            auto polyData = vtkSmartPointer<vtkPolyData>::New();
+            polyData->SetPoints(points);
+            polyData->SetPolys(polygonsCells);
+            polyData->GetCellData()->AddArray(cellColors);
+            polyData->GetCellData()->AddArray(cellSheetIds);
+            polyData->GetCellData()->SetScalars(cellColors);
+
+            multiBlock->SetBlock(counter++, polyData);
+        }
+        else
+        {
+            continue;
+            // Create points and cell array
+            auto points = vtkSmartPointer<vtkPoints>::New();
+            auto polygonsCells = vtkSmartPointer<vtkCellArray>::New();
+
+            auto cellColors = vtkSmartPointer<vtkFloatArray>::New();
+            cellColors->SetNumberOfComponents(3);  // RGB
+            cellColors->SetName("Colors");
+
+            auto cellSheetIds = vtkSmartPointer<vtkIntArray>::New();
+            cellSheetIds->SetNumberOfComponents(1);  // RGB
+            cellSheetIds->SetName("SheetId");
+
+            // Add points to the points object
+            vtkIdType startIndex = points->GetNumberOfPoints();
+            for (const CartesianPoint &point : polygon) 
+            {
+                points->InsertNextPoint(point.x(), point.y(), 0.0);
+            }
+
+            // Create the polygon and add it to the cell array
+            auto poly = vtkSmartPointer<vtkPolygon>::New();
+            poly->GetPointIds()->SetNumberOfIds(polygon.size());
+            for (vtkIdType j = 0; j < static_cast<vtkIdType>(polygon.size()); ++j)
+            {
+                poly->GetPointIds()->SetId(j, startIndex + j);
+            }
+            polygonsCells->InsertNextCell(poly);
+
+            // Add the color for this polygon
+            cellColors->InsertNextTypedTuple(sheetColour.data());
+            cellSheetIds->InsertNextValue(sheetId);
+
+
+            // Create the polydata
+            auto polyData = vtkSmartPointer<vtkPolyData>::New();
+            polyData->SetPoints(points);
+            polyData->SetPolys(polygonsCells);
+            polyData->GetCellData()->AddArray(cellSheetIds);  // Add the integer array
+            polyData->GetCellData()->AddArray(cellColors);
+            polyData->GetCellData()->SetScalars(cellColors);
+
+
+            // Add the polydata as a block in the multiblock dataset
+            multiBlock->SetBlock(counter++, polyData);
         }
 
-        // Create the polygon and add it to the cell array
-        auto poly = vtkSmartPointer<vtkPolygon>::New();
-        poly->GetPointIds()->SetNumberOfIds(polygon.size());
-        for (vtkIdType j = 0; j < static_cast<vtkIdType>(polygon.size()); ++j)
-        {
-            poly->GetPointIds()->SetId(j, startIndex + j);
-        }
-        polygonsCells->InsertNextCell(poly);
 
-        // Add the color for this polygon
-        cellColors->InsertNextTypedTuple(sheetColour.data());
-        cellSheetIds->InsertNextValue(sheetId);
-
-
-
-
-
-        // Create the polydata
-        auto polyData = vtkSmartPointer<vtkPolyData>::New();
-        polyData->SetPoints(points);
-        polyData->SetPolys(polygonsCells);
-        polyData->GetCellData()->AddArray(cellSheetIds);  // Add the integer array
-        polyData->GetCellData()->AddArray(cellColors);
-        polyData->GetCellData()->SetScalars(cellColors);
-
-
-        // Add the polydata as a block in the multiblock dataset
-        multiBlock->SetBlock(counter++, polyData);
 
 
         // Write to VTP file
